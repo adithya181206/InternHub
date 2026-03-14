@@ -15,35 +15,38 @@ export default function DashboardAnalytics() {
         if (!selectedStat) return null;
 
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSelectedStat(null)} />
-                <div className="relative w-full max-w-2xl glass-card-static flex flex-col max-h-[85vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center p-6 border-b border-border/50 shrink-0">
+            <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4 sm:items-center sm:p-4">
+                <div className="absolute inset-0 bg-background/98 sm:bg-background/80 backdrop-blur-2xl" onClick={() => setSelectedStat(null)} />
+                <div className="relative w-full max-h-[70vh] sm:max-w-2xl mx-auto glass-card-static flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-top sm:zoom-in-95 duration-300 border border-border/50 rounded-[2rem] sm:rounded-[2.5rem]">
+                    <div className="flex justify-between items-center px-6 py-4 border-b border-border/50 shrink-0">
                         <div>
                             <h2 className="text-xl font-black">{selectedStat.title}</h2>
-                            <p className="text-sm text-foreground/50">{selectedStat.data.length} request(s) found</p>
+                            <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/40">{selectedStat.data.length} Results</p>
                         </div>
                         <button onClick={() => setSelectedStat(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer text-foreground/50 hover:text-foreground">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
-                    <div className="overflow-y-auto p-6 space-y-4 styled-scrollbar flex-1">
+                    <div className="overflow-y-auto p-4 space-y-3 styled-scrollbar flex-1">
                         {selectedStat.data.length === 0 ? (
                             <p className="text-center text-foreground/50 py-8 font-semibold">No requests in this list.</p>
                         ) : (
                             selectedStat.data.map(req => (
-                                <div key={req.id} className="flex justify-between items-center p-4 rounded-xl border border-border/50 bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                                    <div>
-                                        <h4 className="font-bold text-lg">
+                                <div key={req.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl border border-border/50 bg-secondary/30 hover:bg-secondary/50 transition-all duration-200 gap-3">
+                                    <div className="flex-1 min-w-0 w-full">
+                                        <h4 className="font-bold text-base truncate">
                                             {user?.role === 'student' ? req.company : req.studentName}
                                         </h4>
-                                        <p className="text-xs font-semibold text-foreground/60">{req.jobTitle}</p>
+                                        <p className="text-[10px] font-bold text-foreground/40 truncate uppercase tracking-wider">{req.jobTitle}</p>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-black tracking-widest mb-1">
+                                    <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/10">
+                                        <div className="inline-block px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-black tracking-widest whitespace-nowrap">
                                             {req.matchScore}% MATCH
                                         </div>
-                                        <p className="text-[10px] text-foreground/40 uppercase tracking-widest font-black mt-1">
+                                        <p className={`text-[9px] uppercase tracking-widest font-black whitespace-nowrap px-2 py-0.5 rounded-md ${
+                                            req.status === 'accepted' ? 'text-emerald bg-emerald/10' : 
+                                            req.status === 'pending' ? 'text-amber bg-amber/10' : 'text-red-500 bg-red-500/10'
+                                        }`}>
                                             {req.status === 'pending' ? 'Pending' : req.status === 'accepted' ? 'Approved' : 'Declined'}
                                         </p>
                                     </div>
@@ -80,7 +83,7 @@ export default function DashboardAnalytics() {
                 </div>
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                     <StatCard icon={<Briefcase className="w-5 h-5" />} label="Total Requests" value={total} color="primary" onClick={() => setSelectedStat({ title: 'Total Requests', data: myReferrals })} />
                     <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Accepted" value={accepted} color="emerald" onClick={() => setSelectedStat({ title: 'Accepted Internships', data: myReferrals.filter(r => r.status === 'accepted') })} />
                     <StatCard icon={<XCircle className="w-5 h-5" />} label="Rejected" value={rejected} color="red" onClick={() => setSelectedStat({ title: 'Rejected Applications', data: myReferrals.filter(r => r.status === 'rejected' || r.status === 'rejected_elsewhere') })} />
@@ -161,7 +164,7 @@ export default function DashboardAnalytics() {
                 <p className="text-foreground/60 text-sm">Your impact as a mentor at <strong className="text-primary">{user?.verifiedCompany}</strong>.</p>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                 <StatCard icon={<Users className="w-5 h-5" />} label="Total Requests" value={total} color="primary" onClick={() => setSelectedStat({ title: 'All Requests', data: companyReferrals })} />
                 <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Approved" value={accepted} color="emerald" onClick={() => setSelectedStat({ title: 'Approved Students', data: companyReferrals.filter(r => r.status === 'accepted') })} />
                 <StatCard icon={<XCircle className="w-5 h-5" />} label="Declined" value={rejected + autoRejected} color="red" onClick={() => setSelectedStat({ title: 'Declined Students', data: companyReferrals.filter(r => r.status === 'rejected' || r.status === 'rejected_elsewhere') })} />

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useReferralStore } from '../store/useReferralStore';
 import { useBookmarkStore } from '../store/useBookmarkStore';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useChatStore } from '../store/useChatStore';
 import ChatPanel from '../components/ChatPanel';
 
 // Mock Data
@@ -32,6 +33,7 @@ export default function DiscoveryHub() {
     const { user } = useAuthStore();
     const { referrals, requestReferral, reload } = useReferralStore();
     const { bookmarks, toggleBookmark } = useBookmarkStore();
+    const { getUnreadCount } = useChatStore();
     const { addToast } = useNotificationStore();
     const [chatOpen, setChatOpen] = useState<{ referralId: string; partnerName: string } | null>(null);
 
@@ -40,6 +42,7 @@ export default function DiscoveryHub() {
     const [sortBy, setSortBy] = useState<SortOption>('match');
     const [selectedTech, setSelectedTech] = useState<string[]>([]);
     const [showSaved, setShowSaved] = useState(false);
+    const [isSortOpen, setIsSortOpen] = useState(false);
 
     useEffect(() => { reload(); }, [reload]);
     useEffect(() => {
@@ -112,42 +115,68 @@ export default function DiscoveryHub() {
             </div>
 
             {/* Search & Filter Bar */}
-            <div className="glass-card-static p-4 mb-6 space-y-3">
-                <div className="flex gap-3 items-center">
+            <div className="glass-card-static p-4 mb-6 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
                     <div className="relative flex-1">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search by title, company, or location..."
-                            className="w-full glass-input py-2.5 pl-10 pr-4 text-sm font-medium outline-none"
+                            placeholder="Search..."
+                            className="w-full glass-input py-2 px-10 text-sm font-medium outline-none"
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <SortAsc className="w-4 h-4 text-foreground/40 shrink-0" />
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as SortOption)}
-                            className="glass-input py-2.5 px-3 text-sm font-semibold outline-none appearance-none cursor-pointer"
+                    <div className="flex items-center gap-2 relative">
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsSortOpen(!isSortOpen)}
+                                className="flex items-center gap-2 bg-secondary/50 rounded-xl px-3 py-2 border border-border/30 hover:bg-secondary/70 transition-all duration-200 cursor-pointer"
+                            >
+                                <SortAsc className="w-4 h-4 text-primary shrink-0" />
+                                <span className="text-sm font-semibold capitalize text-foreground">
+                                    {sortBy === 'match' ? 'Match %' : sortBy}
+                                </span>
+                            </button>
+
+                            {isSortOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)} />
+                                    <div className="absolute top-full left-0 mt-2 w-40 glass-card-static p-2 z-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                                        {(['match', 'company', 'openings'] as SortOption[]).map((option) => (
+                                            <button
+                                                key={option}
+                                                onClick={() => {
+                                                    setSortBy(option);
+                                                    setIsSortOpen(false);
+                                                }}
+                                                className={cn(
+                                                    "w-full text-left px-3 py-2 rounded-lg text-sm font-bold capitalize transition-all duration-200",
+                                                    sortBy === option 
+                                                        ? "bg-primary/10 text-primary" 
+                                                        : "text-foreground/60 hover:bg-white/5 hover:text-foreground"
+                                                )}
+                                            >
+                                                {option === 'match' ? 'Match %' : option}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setShowSaved(!showSaved)}
+                            className={cn(
+                                "p-2.5 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border",
+                                showSaved
+                                    ? "bg-red-500/10 border-red-500/30 text-red-500"
+                                    : "border-border/50 text-foreground/40 hover:text-red-500 hover:border-red-500/30"
+                            )}
+                            title="Show saved jobs"
                         >
-                            <option value="match">Match %</option>
-                            <option value="company">Company A-Z</option>
-                            <option value="openings">Openings</option>
-                        </select>
+                            <Heart className={cn("w-4 h-4", showSaved && "fill-current")} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setShowSaved(!showSaved)}
-                        className={cn(
-                            "p-2.5 rounded-xl transition-all duration-200 cursor-pointer shrink-0 border",
-                            showSaved
-                                ? "bg-red-500/10 border-red-500/30 text-red-500"
-                                : "border-border/50 text-foreground/40 hover:text-red-500 hover:border-red-500/30"
-                        )}
-                        title="Show saved jobs"
-                    >
-                        <Heart className={cn("w-4 h-4", showSaved && "fill-current")} />
-                    </button>
                 </div>
 
                 {/* Tech Filter Pills */}
@@ -198,19 +227,8 @@ export default function DiscoveryHub() {
                         <div key={job.id} className="group flex flex-col justify-between glass-card p-6 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-emerald/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
 
-                            {/* Bookmark button */}
-                            <button
-                                onClick={() => {
-                                    toggleBookmark(job.id);
-                                    addToast(isSaved ? 'Removed from saved' : 'Saved to bookmarks', isSaved ? 'info' : 'success');
-                                }}
-                                className="absolute top-5 right-5 p-2 rounded-xl hover:bg-red-500/10 transition-all duration-200 cursor-pointer z-10"
-                            >
-                                <Heart className={cn("w-4 h-4 transition-colors", isSaved ? "fill-red-500 text-red-500" : "text-foreground/30 hover:text-red-500")} />
-                            </button>
-
-                            <div className="flex justify-between items-start mb-6 pt-2 pr-8">
-                                <div>
+                            <div className="flex justify-between items-start mb-6 gap-3 pt-2">
+                                <div className="flex-1 min-w-0">
                                     {status === 'accepted' && (
                                         <div className="inline-flex mb-3 bg-emerald/10 text-emerald px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest">
                                             ✓ Referral Approved
@@ -222,20 +240,32 @@ export default function DiscoveryHub() {
                                         </div>
                                     )}
 
-                                    <h3 className="text-xl font-black mb-1">{job.title}</h3>
-                                    <div className="flex items-center gap-3 text-sm font-semibold opacity-70">
-                                        <span className="flex items-center gap-1"><Building2 className="w-4 h-4" /> {job.company}</span>
-                                        <span>&bull;</span>
-                                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {job.location}</span>
+                                    <h3 className="text-xl font-black mb-1 truncate">{job.title}</h3>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold opacity-70">
+                                        <span className="flex items-center gap-1 shrink-0"><Building2 className="w-4 h-4" /> {job.company}</span>
+                                        <span className="hidden sm:inline">&bull;</span>
+                                        <span className="flex items-center gap-1 shrink-0"><MapPin className="w-4 h-4" /> {job.location}</span>
                                     </div>
                                 </div>
-                                <div className={cn(
-                                    "px-3 py-1 rounded-xl text-sm font-black flex items-center gap-1 shadow-md shrink-0",
-                                    job.match >= 85
-                                        ? "bg-gradient-to-r from-emerald to-green-400 text-white"
-                                        : "bg-gradient-to-r from-amber to-yellow-400 text-white"
-                                )}>
-                                    {job.match}% Match
+                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                    {/* Bookmark button moved here to prevent overlap */}
+                                    <button
+                                        onClick={() => {
+                                            toggleBookmark(job.id);
+                                            addToast(isSaved ? 'Removed from saved' : 'Saved to bookmarks', isSaved ? 'info' : 'success');
+                                        }}
+                                        className="p-2 rounded-xl bg-background/50 hover:bg-red-500/10 transition-all duration-200 cursor-pointer border border-border/30"
+                                    >
+                                        <Heart className={cn("w-4 h-4 transition-colors", isSaved ? "fill-red-500 text-red-500" : "text-foreground/30 hover:text-red-500")} />
+                                    </button>
+                                    <div className={cn(
+                                        "px-2.5 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 shadow-md",
+                                        job.match >= 85
+                                            ? "bg-gradient-to-r from-emerald to-green-400 text-white"
+                                            : "bg-gradient-to-r from-amber to-yellow-400 text-white"
+                                    )}>
+                                        {job.match}% Match
+                                    </div>
                                 </div>
                             </div>
 
@@ -251,21 +281,27 @@ export default function DiscoveryHub() {
                                 ))}
                             </div>
 
-                            <div className="flex justify-between items-center border-t border-border pt-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-t border-border pt-6 gap-4">
                                 <div className="flex items-center gap-2 text-primary font-bold text-sm">
                                     <div className="bg-primary/10 p-2 rounded-xl">
                                         <Star className="w-4 h-4" />
                                     </div>
                                     <span>{job.alumni} Alumni Here</span>
                                 </div>
-                                <div className="flex gap-3">
+                                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                     {status === 'accepted' && referral && (
                                         <button
                                             onClick={() => setChatOpen({ referralId: referral.id, partnerName: `${job.company} Alumni` })}
-                                            className="px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all duration-200 text-sm bg-emerald/10 text-emerald border border-emerald/20 hover:bg-emerald/20 hover:-translate-y-0.5 cursor-pointer"
+                                            className="px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all duration-200 text-sm bg-emerald/10 text-emerald border border-emerald/20 hover:bg-emerald/20 hover:-translate-y-0.5 cursor-pointer relative"
                                         >
                                             <MessageCircle className="w-4 h-4" />
                                             Chat
+                                            {user && getUnreadCount(referral.id, user.uid) > 0 && (
+                                                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                </span>
+                                            )}
                                         </button>
                                     )}
                                     <button
@@ -312,7 +348,7 @@ export default function DiscoveryHub() {
                     currentUserId={user.uid}
                     currentUserName={user.displayName || 'Student'}
                     currentUserRole="student"
-                    partnerName={chatOpen.partnerName}
+                    partnerName={chatOpen?.partnerName || 'Alumni'}
                     onClose={() => setChatOpen(null)}
                 />
             )}

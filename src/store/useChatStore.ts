@@ -8,6 +8,7 @@ export interface ChatMessage {
     senderRole: 'student' | 'alumnus';
     text: string;
     timestamp: number;
+    read: boolean;
 }
 
 function loadMessages(): ChatMessage[] {
@@ -21,9 +22,10 @@ function saveMessages(messages: ChatMessage[]) {
 
 interface ChatState {
     messages: ChatMessage[];
-    sendMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+    sendMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp' | 'read'>) => void;
     getMessagesForReferral: (referralId: string) => ChatMessage[];
     getUnreadCount: (referralId: string, userId: string) => number;
+    markAsRead: (referralId: string, userId: string) => void;
     reload: () => void;
 }
 
@@ -35,6 +37,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ...msg,
             id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             timestamp: Date.now(),
+            read: false,
         };
         set((state) => {
             const updated = [...state.messages, newMsg];
@@ -51,8 +54,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     getUnreadCount: (referralId, userId) => {
         return get().messages.filter(
-            m => m.referralId === referralId && m.senderId !== userId
+            m => m.referralId === referralId && m.senderId !== userId && !m.read
         ).length;
+    },
+
+    markAsRead: (referralId, userId) => {
+        set((state) => {
+            const updated = state.messages.map(m =>
+                (m.referralId === referralId && m.senderId !== userId && !m.read)
+                    ? { ...m, read: true }
+                    : m
+            );
+            saveMessages(updated);
+            return { messages: updated };
+        });
     },
 
     reload: () => {

@@ -3,6 +3,7 @@ import { useApplicationStore, type ApplicationStage, type Application } from '..
 import { useReferralStore } from '../store/useReferralStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useChatStore } from '../store/useChatStore';
 import { Plus, X, ChevronRight, GripVertical, StickyNote, Trash2, Send, MessageCircle } from 'lucide-react';
 import ChatPanel from '../components/ChatPanel';
 
@@ -16,6 +17,7 @@ const STAGES: { key: ApplicationStage; label: string; color: string }[] = [
 export default function ApplicationTracker() {
     const { user } = useAuthStore();
     const { getStudentReferrals } = useReferralStore();
+    const { getUnreadCount } = useChatStore();
     const { applications: manualApplications, addApplication, moveApplication, updateNotes, removeApplication } = useApplicationStore();
     const { addToast } = useNotificationStore();
     const [showAdd, setShowAdd] = useState(false);
@@ -129,7 +131,7 @@ export default function ApplicationTracker() {
             )}
 
             {/* Kanban Board */}
-            <div className="flex gap-4 overflow-x-auto pb-4 styled-scrollbar flex-1">
+            <div className="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4 styled-scrollbar flex-1">
                 {STAGES.map((stage) => {
                     const stageApps = allApplications.filter(a => a.stage === stage.key);
                     return (
@@ -227,10 +229,16 @@ export default function ApplicationTracker() {
                                             <div className="pt-2 border-t border-border/50">
                                                 <button
                                                     onClick={() => setChatOpen({ referralId: app.id.replace('ref_', ''), partnerName: `${app.company} Alumni` })}
-                                                    className="w-full py-2 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200 text-xs bg-emerald/10 text-emerald border border-emerald/20 hover:bg-emerald/20 cursor-pointer"
+                                                    className="w-full py-2 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200 text-xs bg-emerald/10 text-emerald border border-emerald/20 hover:bg-emerald/20 cursor-pointer relative"
                                                 >
                                                     <MessageCircle className="w-3.5 h-3.5" />
                                                     Chat with Alumnus
+                                                    {user && getUnreadCount(app.id.replace('ref_', ''), user.uid) > 0 && (
+                                                        <span className="absolute top-1 right-2 flex h-2 w-2">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                        </span>
+                                                    )}
                                                 </button>
                                             </div>
                                         ) : null}

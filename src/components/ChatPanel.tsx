@@ -13,7 +13,7 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ referralId, currentUserId, currentUserName, currentUserRole, partnerName, onClose }: ChatPanelProps) {
-    const { messages, sendMessage, reload } = useChatStore();
+    const { messages, sendMessage, markAsRead, reload } = useChatStore();
     const [text, setText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -28,15 +28,15 @@ export default function ChatPanel({ referralId, currentUserId, currentUserName, 
         return () => clearInterval(interval);
     }, [reload]);
 
+    // Mark as read when messages change or on mount
+    useEffect(() => {
+        markAsRead(referralId, currentUserId);
+    }, [referralId, currentUserId, chatMessages.length, markAsRead]);
+
     // Auto-scroll to bottom on new messages
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatMessages.length]);
-
-    // Focus input on open
-    useEffect(() => {
-        inputRef.current?.focus();
-    }, []);
 
     const handleSend = () => {
         const trimmed = text.trim();
@@ -64,9 +64,10 @@ export default function ChatPanel({ referralId, currentUserId, currentUserName, 
     };
 
     return createPortal(
-        <div className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 animate-in slide-in-from-bottom-8 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none sm:p-0 sm:items-end sm:justify-end sm:pointer-events-auto">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto sm:hidden" onClick={onClose} />
             {/* Chat window */}
-            <div className="relative glass-card-static w-[calc(100vw-2rem)] md:w-[400px] h-[500px] max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden shadow-2xl border border-white/10 rounded-2xl">
+            <div className="relative glass-card-static w-full sm:w-[400px] h-[500px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-8rem)] flex flex-col overflow-hidden shadow-2xl border border-white/10 rounded-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-8 duration-300 pointer-events-auto sm:mr-8 sm:mb-8">
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-border/50 shrink-0">
                     <div className="flex items-center gap-3">

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { UserCheck, UserX, Users, Briefcase, Eye, X, GraduationCap, Code2, MessageCircle, FileText, Copy, Mail } from 'lucide-react';
+import { UserCheck, UserX, Users, Briefcase, Eye, MessageCircle, FileText, Copy, Mail } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { useAuthStore } from '../store/useAuthStore';
 import { useReferralStore } from '../store/useReferralStore';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useChatStore } from '../store/useChatStore';
 import ChatPanel from '../components/ChatPanel';
 
 interface StudentDNA {
@@ -17,10 +19,11 @@ interface StudentDNA {
 export default function ReferralDesk() {
     const { user } = useAuthStore();
     const { referrals, handleAction, reload } = useReferralStore();
+    const { getUnreadCount } = useChatStore();
     const { addToast } = useNotificationStore();
-    const [profileModal, setProfileModal] = useState<{ open: boolean; studentName: string; studentId: string; dna: StudentDNA | null }>({ open: false, studentName: '', studentId: '', dna: null });
+    const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+    const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
     const [chatOpen, setChatOpen] = useState<{ referralId: string; partnerName: string } | null>(null);
-    const [emailModal, setEmailModal] = useState<{ open: boolean; studentName: string; jobTitle: string; company: string } | null>(null);
 
     useEffect(() => { reload(); }, [reload]);
     useEffect(() => {
@@ -34,16 +37,19 @@ export default function ReferralDesk() {
 
     const pendingCount = companyReferrals.filter(r => r.status === 'pending').length;
 
-    const handleViewProfile = (studentId: string, studentName: string) => {
-        const stored = localStorage.getItem(`mock_dna_${studentId}`);
-        const dna: StudentDNA | null = stored ? JSON.parse(stored) : null;
-        setProfileModal({ open: true, studentName, studentId, dna });
+    const handleViewProfile = (reqId: string) => {
+        if (activeProfileId === reqId) setActiveProfileId(null);
+        else {
+            setActiveProfileId(reqId);
+            setActiveEmailId(null);
+        }
     };
 
-    const handleApprove = (reqId: string, jobId: string, openings: number, studentName: string, jobTitle: string, company: string) => {
+    const handleApprove = (reqId: string, jobId: string, openings: number, studentName: string) => {
         handleAction(reqId, 'accepted', jobId, openings);
         addToast(`Approved referral for ${studentName}`, 'success');
-        setEmailModal({ open: true, studentName, jobTitle, company });
+        setActiveEmailId(reqId);
+        setActiveProfileId(null);
     };
 
     const handleReject = (reqId: string, jobId: string, openings: number, studentName: string) => {
@@ -51,13 +57,13 @@ export default function ReferralDesk() {
         addToast(`Declined referral for ${studentName}`, 'info');
     };
 
-    const generateEmailTemplate = () => {
-        if (!emailModal || !user) return '';
-        return `Subject: Referral for ${emailModal.studentName} — ${emailModal.jobTitle} at ${emailModal.company}
+    const generateEmailTemplate = (req: any) => {
+        if (!req || !user) return '';
+        return `Subject: Referral for ${req.studentName} — ${req.jobTitle} at ${req.company}
 
 Dear Hiring Team,
 
-I am writing to refer ${emailModal.studentName} for the ${emailModal.jobTitle} position at ${emailModal.company}.
+I am writing to refer ${req.studentName} for the ${req.jobTitle} position at ${req.company}.
 
 Having reviewed their profile on InternHub, I believe they would be an excellent addition to the team. Their technical skills and academic background align well with the requirements of this role.
 
@@ -69,9 +75,14 @@ ${user.email}
 ${user.verifiedCompany} Alumni`;
     };
 
-    const handleCopyEmail = () => {
-        navigator.clipboard.writeText(generateEmailTemplate());
+    const handleCopyEmail = (req: any) => {
+        navigator.clipboard.writeText(generateEmailTemplate(req));
         addToast('Email template copied to clipboard!', 'success');
+    };
+
+    const getStudentDNA = (studentId: string): StudentDNA | null => {
+        const stored = localStorage.getItem(`mock_dna_${studentId}`);
+        return stored ? JSON.parse(stored) : null;
     };
 
     // Check if resume file exists for a student
@@ -102,54 +113,154 @@ ${user.verifiedCompany} Alumni`;
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto pr-4 styled-scrollbar flex-1 pb-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto pr-2 sm:pr-4 styled-scrollbar flex-1 pb-10">
                     {companyReferrals.map((req) => (
-                        <div key={req.id} className="group flex flex-col justify-between glass-card p-8 relative overflow-hidden">
+                        <div key={req.id} className="group flex flex-col justify-between glass-card p-5 md:p-8 relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-emerald/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-[2.5rem] pointer-events-none" />
 
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xl font-black truncate">{req.studentName}</h3>
-                                        <span className="bg-emerald/10 text-emerald px-3 py-1 rounded-xl text-xs font-bold shrink-0">{req.matchScore}% Match</span>
-                                    </div>
+                            <div className="flex flex-col lg:flex-row justify-between items-start mb-4 gap-3">
+                                <div className="flex-1 min-w-0 w-full">
+                                    <h3 className="text-lg md:text-2xl font-black truncate">{req.studentName}</h3>
                                     <div className="flex items-center gap-2 text-foreground/70 font-medium text-sm">
-                                        <Briefcase className="w-4 h-4" />
+                                        <Briefcase className="w-4 h-4 shrink-0" />
                                         <span className="truncate">{req.jobTitle}</span>
                                     </div>
+                                </div>
+                                <div className="bg-emerald/10 text-emerald px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 shadow-sm border border-emerald/20 self-start lg:self-center">
+                                    {req.matchScore}% Match
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-4 mb-4 flex-wrap">
                                 <button
-                                    onClick={() => handleViewProfile(req.studentId, req.studentName)}
-                                    className="flex items-center gap-2 text-primary font-semibold text-sm hover:underline transition-all duration-200 cursor-pointer"
+                                    onClick={() => handleViewProfile(req.id)}
+                                    className={cn(
+                                        "flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer",
+                                        activeProfileId === req.id ? "text-primary bg-primary/10 px-3 py-1.5 rounded-xl shadow-inner" : "text-primary hover:underline"
+                                    )}
                                 >
-                                    <Eye className="w-4 h-4" /> View Profile
+                                    <Eye className="w-4 h-4" /> {activeProfileId === req.id ? 'Hide Profile' : 'View Profile'}
                                 </button>
                                 {req.status === 'accepted' && (
                                     <>
                                         <button
                                             onClick={() => setChatOpen({ referralId: req.id, partnerName: req.studentName })}
-                                            className="flex items-center gap-2 text-emerald font-semibold text-sm hover:underline transition-all duration-200 cursor-pointer"
+                                            className="flex items-center gap-2 text-emerald font-semibold text-sm hover:underline transition-all duration-200 cursor-pointer relative"
                                         >
                                             <MessageCircle className="w-4 h-4" /> Chat
+                                            {user && getUnreadCount(req.id, user.uid) > 0 && (
+                                                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                </span>
+                                            )}
                                         </button>
                                         <button
-                                            onClick={() => setEmailModal({ open: true, studentName: req.studentName, jobTitle: req.jobTitle, company: req.company })}
-                                            className="flex items-center gap-2 text-amber font-semibold text-sm hover:underline transition-all duration-200 cursor-pointer"
+                                            onClick={() => {
+                                                if (activeEmailId === req.id) setActiveEmailId(null);
+                                                else {
+                                                    setActiveEmailId(req.id);
+                                                    setActiveProfileId(null);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer",
+                                                activeEmailId === req.id ? "text-amber bg-amber/10 px-3 py-1.5 rounded-xl shadow-inner" : "text-amber hover:underline"
+                                            )}
                                         >
-                                            <Mail className="w-4 h-4" /> Email Template
+                                            <Mail className="w-4 h-4" /> {activeEmailId === req.id ? 'Hide Template' : 'Email Template'}
                                         </button>
                                     </>
                                 )}
                             </div>
 
-                            <div className="mt-auto pt-6 border-t border-border/50 flex justify-between items-center gap-4">
+                            {/* Inline Profile View */}
+                            {activeProfileId === req.id && (
+                                <div className="mt-4 pt-6 border-t border-border/50 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    {getStudentDNA(req.studentId) ? (
+                                        <div className="space-y-6">
+                                            <div className="bg-gradient-to-br from-primary to-indigo-500 text-white p-5 rounded-2xl shadow-indigo relative overflow-hidden">
+                                                <p className="text-xs opacity-90 font-medium leading-relaxed italic">
+                                                    {getStudentDNA(req.studentId)?.summary || 'No summary available.'}
+                                                </p>
+                                            </div>
+
+                                            {/* Resume Preview */}
+                                            {getResumeFile(req.studentId) && (
+                                                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center gap-3">
+                                                    <FileText className="w-4 h-4 text-primary" />
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold">Resume Available</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const data = getResumeFile(req.studentId);
+                                                            if (data) {
+                                                                const win = window.open();
+                                                                if (win) {
+                                                                    win.document.write(`<iframe src="${data}" width="100%" height="100%" style="border:none;position:absolute;inset:0"></iframe>`);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1 text-[10px] btn-primary-gradient cursor-pointer"
+                                                    >
+                                                        View
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {getStudentDNA(req.studentId)?.technicalSkills && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {getStudentDNA(req.studentId)?.technicalSkills?.map((skill, i) => (
+                                                        <span key={i} className="px-2 py-1 bg-primary/5 text-primary rounded-lg font-bold text-[10px] border border-primary/10">{skill}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {getStudentDNA(req.studentId)?.experience && (
+                                                <div className="space-y-3">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground/40">Latest Experience</h4>
+                                                    {getStudentDNA(req.studentId)?.experience?.slice(0, 1).map((exp, i) => (
+                                                        <div key={i} className="pl-3 border-l-2 border-primary/20">
+                                                            <h4 className="font-bold text-sm">{exp.role}</h4>
+                                                            <p className="text-primary font-bold text-[10px]">{exp.company}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="py-8 text-center opacity-50">
+                                            <Eye className="w-8 h-8 mx-auto mb-2" />
+                                            <p className="text-xs font-bold">No Profile Available</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Inline Email Template */}
+                            {activeEmailId === req.id && (
+                                <div className="mt-4 pt-6 border-t border-border/50 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 bg-amber/10 rounded-lg text-amber"><Mail className="w-4 h-4" /></div>
+                                            <p className="text-xs font-bold uppercase tracking-widest text-foreground/40">Reference Template</p>
+                                        </div>
+                                        <button onClick={() => handleCopyEmail(req)} className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors cursor-pointer" title="Copy Template">
+                                            <Copy className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <pre className="glass-input p-4 text-[11px] font-medium leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto styled-scrollbar border border-white/5">
+                                        {generateEmailTemplate(req)}
+                                    </pre>
+                                </div>
+                            )}
+
+                            <div className="mt-auto pt-6 border-t border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
                                     {req.status === 'pending' ? 'Action Required' : req.status === 'accepted' ? 'Referral Sent' : req.status === 'rejected_elsewhere' ? 'Capacity Reached' : 'Rejected'}
                                 </div>
-                                <div className="flex gap-3">
+                                <div className="flex gap-3 w-full sm:w-auto justify-end">
                                     {req.status === 'pending' && (
                                         <>
                                             <button
@@ -160,7 +271,7 @@ ${user.verifiedCompany} Alumni`;
                                                 <UserX className="w-5 h-5" />
                                             </button>
                                             <button
-                                                onClick={() => handleApprove(req.id, req.jobId, req.openings, req.studentName, req.jobTitle, req.company)}
+                                                onClick={() => handleApprove(req.id, req.jobId, req.openings, req.studentName)}
                                                 className="px-6 py-3 btn-primary-gradient text-sm rounded-2xl flex items-center gap-2 cursor-pointer"
                                             >
                                                 <UserCheck className="w-4 h-4" /> Approve
@@ -187,149 +298,6 @@ ${user.verifiedCompany} Alumni`;
                             )}
                         </div>
                     ))}
-                </div>
-            )}
-
-            {/* Student Profile Modal */}
-            {profileModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setProfileModal({ open: false, studentName: '', studentId: '', dna: null })} />
-                    <div className="relative glass-card-static w-full max-w-2xl max-h-[85vh] overflow-y-auto styled-scrollbar p-8 animate-in zoom-in-95 fade-in duration-200">
-                        <button onClick={() => setProfileModal({ open: false, studentName: '', studentId: '', dna: null })} className="absolute top-6 right-6 p-2 rounded-xl hover:bg-primary/10 text-foreground/50 hover:text-foreground transition-all duration-200 cursor-pointer z-10">
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        {profileModal.dna ? (
-                            <div className="space-y-6">
-                                <div className="bg-gradient-to-br from-primary to-indigo-500 text-white p-6 rounded-[2rem] shadow-indigo relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none" />
-                                    <h2 className="text-2xl font-black tracking-widest uppercase mb-2 relative z-10">
-                                        {profileModal.dna.extractedName || profileModal.studentName}
-                                    </h2>
-                                    <p className="text-sm opacity-90 font-medium leading-relaxed max-w-xl relative z-10">
-                                        {profileModal.dna.summary || 'No summary available.'}
-                                    </p>
-                                </div>
-
-                                {/* Resume Preview */}
-                                {getResumeFile(profileModal.studentId) && (
-                                    <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center gap-3">
-                                        <FileText className="w-5 h-5 text-primary" />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold">Resume File Available</p>
-                                            <p className="text-xs text-foreground/50">Student's uploaded resume</p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                const data = getResumeFile(profileModal.studentId);
-                                                if (data) {
-                                                    const win = window.open();
-                                                    if (win) {
-                                                        win.document.write(`<iframe src="${data}" width="100%" height="100%" style="border:none;position:absolute;inset:0"></iframe>`);
-                                                    }
-                                                }
-                                            }}
-                                            className="px-3 py-1.5 text-xs btn-primary-gradient cursor-pointer"
-                                        >
-                                            View Resume
-                                        </button>
-                                    </div>
-                                )}
-
-                                {profileModal.dna.technicalSkills && profileModal.dna.technicalSkills.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold tracking-widest uppercase text-foreground/60 mb-3 flex items-center gap-2">
-                                            <Code2 className="w-4 h-4 text-primary" /> Technical Skills
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {profileModal.dna.technicalSkills.map((skill, i) => (
-                                                <span key={i} className="px-3 py-1.5 bg-primary/10 text-primary rounded-xl font-semibold text-sm border border-primary/20">{skill}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {profileModal.dna.education && profileModal.dna.education.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold tracking-widest uppercase text-foreground/60 mb-3 flex items-center gap-2">
-                                            <GraduationCap className="w-4 h-4 text-emerald" /> Education
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {profileModal.dna.education.map((edu, i) => (
-                                                <div key={i}><span className="font-black">{edu.degree}</span><br /><span className="text-foreground/60 text-sm">{edu.institution} &bull; {edu.year}</span></div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {profileModal.dna.experience && profileModal.dna.experience.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold tracking-widest uppercase text-foreground/60 mb-3 flex items-center gap-2">
-                                            <Briefcase className="w-4 h-4 text-amber" /> Experience
-                                        </h3>
-                                        <div className="space-y-4">
-                                            {profileModal.dna.experience.map((exp, i) => (
-                                                <div key={i} className="relative pl-5 border-l-2 border-primary/20">
-                                                    <div className="absolute w-2.5 h-2.5 bg-gradient-to-r from-primary to-indigo-400 rounded-full -left-[6px] top-1.5" />
-                                                    <h4 className="font-black">{exp.role}</h4>
-                                                    <p className="text-primary font-bold text-sm">{exp.company} &bull; <span className="text-foreground/60">{exp.period}</span></p>
-                                                    <p className="text-foreground/70 text-sm mt-1">{exp.details}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {profileModal.dna.projects && profileModal.dna.projects.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-bold tracking-widest uppercase text-foreground/60 mb-3 flex items-center gap-2">
-                                            <Code2 className="w-4 h-4 text-indigo-400" /> Key Projects
-                                        </h3>
-                                        <div className="grid gap-4">
-                                            {profileModal.dna.projects.map((proj, i) => (
-                                                <div key={i} className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                                                    <h4 className="font-black text-lg">{proj.title}</h4>
-                                                    <p className="text-primary font-bold text-xs uppercase tracking-wider mb-2">{proj.tech}</p>
-                                                    <p className="text-foreground/70 text-sm leading-relaxed italic">"{proj.details}"</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <Eye className="w-12 h-12 text-foreground/20 mb-4" />
-                                <h3 className="text-xl font-bold mb-2">No Profile Available</h3>
-                                <p className="text-foreground/50 text-sm max-w-sm">This student hasn't uploaded their resume yet.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Email Template Modal */}
-            {emailModal?.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEmailModal(null)} />
-                    <div className="relative glass-card-static w-full max-w-lg p-8 animate-in zoom-in-95 fade-in duration-200">
-                        <button onClick={() => setEmailModal(null)} className="absolute top-6 right-6 p-2 rounded-xl hover:bg-primary/10 text-foreground/50 hover:text-foreground transition-all duration-200 cursor-pointer z-10">
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-3 mb-5">
-                            <div className="p-2 bg-amber/10 rounded-xl"><Mail className="w-5 h-5 text-amber" /></div>
-                            <div>
-                                <h3 className="font-black text-lg">Referral Email Template</h3>
-                                <p className="text-xs text-foreground/50 font-medium">Copy and send to your HR team</p>
-                            </div>
-                        </div>
-                        <pre className="glass-input p-4 text-xs font-medium leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto styled-scrollbar">
-                            {generateEmailTemplate()}
-                        </pre>
-                        <button onClick={handleCopyEmail} className="mt-4 w-full btn-primary-gradient py-3 flex items-center justify-center gap-2 cursor-pointer">
-                            <Copy className="w-4 h-4" /> Copy to Clipboard
-                        </button>
-                    </div>
                 </div>
             )}
 

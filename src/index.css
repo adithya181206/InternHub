@@ -100,6 +100,12 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
 }
 
+@media (max-width: 768px) {
+  .glass-card, .glass-card-static {
+    border-radius: 1.5rem;
+  }
+}
+
 .glass-sidebar {
   background: var(--sidebar-bg);
   backdrop-filter: blur(16px);
