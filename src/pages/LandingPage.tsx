@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Briefcase, UserCircle, Moon, Sun, MonitorSmartphone, ArrowLeft, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Briefcase, UserCircle, Moon, Sun, MonitorSmartphone, ArrowLeft, Mail, Lock, Loader2, Eye, EyeOff, Sparkles, Layers } from 'lucide-react';
 import { useAuthStore, type UserRole, type AppUser } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +22,17 @@ export default function LandingPage({ toggleTheme, theme }: { toggleTheme: () =>
 
     const [selectedRole, setSelectedRole] = useState<UserRole>(null);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+    const [particleBg, setParticleBg] = useState<boolean>(() => {
+        return localStorage.getItem('loginParticleBg') !== 'false';
+    });
+
+    const toggleParticleBg = () => {
+        setParticleBg(prev => {
+            const next = !prev;
+            localStorage.setItem('loginParticleBg', String(next));
+            return next;
+        });
+    };
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -130,19 +141,65 @@ export default function LandingPage({ toggleTheme, theme }: { toggleTheme: () =>
 
     return (
         <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 relative overflow-hidden bg-background">
-            <ParticleBackground />
+            {/* Conditional Particle Background */}
+            {particleBg && <ParticleBackground theme={theme} />}
 
-            {/* Animated gradient orbs */}
+            {/* Animated gradient orbs — shown alongside particles or alone */}
             <div className="glass-orb-1 z-0 -top-20 -left-20" />
             <div className="glass-orb-2 z-0 top-1/3 -right-16" />
             <div className="glass-orb-3 z-0 -bottom-10 left-1/3" />
 
-            <button
-                onClick={toggleTheme}
-                className="absolute top-8 right-8 p-3 rounded-2xl hover:bg-primary/10 transition-all duration-200 z-50 backdrop-blur-sm border border-transparent hover:border-primary/20"
-            >
-                {theme === 'dark' ? <Sun className="w-5 h-5 text-amber" /> : <Moon className="w-5 h-5 text-primary" />}
-            </button>
+            {/* Top-right controls */}
+            <div className="absolute top-8 right-8 flex items-center gap-2 z-50">
+                {/* Particle toggle button */}
+                <button
+                    onClick={toggleParticleBg}
+                    title={particleBg ? 'Switch to plain background' : 'Switch to particle background'}
+                    className={`group relative p-3 rounded-2xl transition-all duration-300 backdrop-blur-sm border overflow-hidden ${
+                        particleBg
+                            ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                            : 'bg-foreground/5 border-foreground/10 text-foreground/40 hover:text-foreground/70 hover:bg-foreground/10'
+                    }`}
+                >
+                    <AnimatePresence mode="wait">
+                        {particleBg ? (
+                            <motion.span
+                                key="particles-on"
+                                initial={{ opacity: 0, rotate: -30, scale: 0.5 }}
+                                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                                exit={{ opacity: 0, rotate: 30, scale: 0.5 }}
+                                transition={{ duration: 0.2 }}
+                                className="block"
+                            >
+                                <Sparkles className="w-5 h-5" />
+                            </motion.span>
+                        ) : (
+                            <motion.span
+                                key="particles-off"
+                                initial={{ opacity: 0, rotate: -30, scale: 0.5 }}
+                                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                                exit={{ opacity: 0, rotate: 30, scale: 0.5 }}
+                                transition={{ duration: 0.2 }}
+                                className="block"
+                            >
+                                <Layers className="w-5 h-5" />
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                    {/* Animated tooltip */}
+                    <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold px-2.5 py-1 rounded-lg bg-foreground/10 backdrop-blur text-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 border border-foreground/10">
+                        {particleBg ? 'Plain BG' : 'Particles'}
+                    </span>
+                </button>
+
+                {/* Theme toggle button */}
+                <button
+                    onClick={toggleTheme}
+                    className="p-3 rounded-2xl hover:bg-primary/10 transition-all duration-200 backdrop-blur-sm border border-transparent hover:border-primary/20"
+                >
+                    {theme === 'dark' ? <Sun className="w-5 h-5 text-amber" /> : <Moon className="w-5 h-5 text-primary" />}
+                </button>
+            </div>
 
             <AnimatePresence mode="wait">
                 {!selectedRole ? (

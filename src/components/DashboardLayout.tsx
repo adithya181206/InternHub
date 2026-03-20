@@ -59,7 +59,10 @@ export default function DashboardLayout({ theme, toggleTheme }: { theme: 'light'
     return (
         <div className="flex w-full min-h-screen bg-background relative">
             <Sidebar theme={theme} toggleTheme={toggleTheme} />
-            <main className="flex-1 p-2 md:p-8 overflow-y-auto w-full max-w-7xl mx-auto min-h-screen">
+            <main className={cn(
+                "flex-1 w-full flex flex-col",
+                location.pathname === '/dashboard/advisor' ? "h-screen overflow-hidden p-0 max-w-none" : "min-h-screen overflow-y-auto p-2 md:p-8 max-w-7xl mx-auto"
+            )}>
                 {/* Mobile Header */}
                 <div className="md:hidden flex flex-col gap-1 mb-3 bg-background/60 backdrop-blur-xl py-2 px-3 rounded-2xl border border-white/10 sticky top-0 z-30 shadow-lg">
                     <div className="flex items-center justify-between w-full">
@@ -114,7 +117,10 @@ export default function DashboardLayout({ theme, toggleTheme }: { theme: 'light'
                     </div>
                 </div>
 
-                <div className="glass-card-static flex-1 flex flex-col p-4 md:p-8 overflow-hidden">
+                <div className={cn(
+                    "flex-1 flex flex-col overflow-hidden",
+                    location.pathname === '/dashboard/advisor' ? "h-full" : "glass-card-static p-4 md:p-8"
+                )}>
                     <Outlet />
                 </div>
             </main>

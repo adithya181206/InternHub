@@ -100,8 +100,8 @@ Keep responses concise (3-5 sentences max), practical, and encouraging. Use bull
         : ['How to build a strong resume?', 'Top skills for tech internships', 'Interview preparation tips', 'How to network effectively'];
 
     return (
-        <div className="flex flex-col flex-1 h-full">
-            <div className="mb-4">
+        <div className="flex flex-col flex-1 h-full p-4 md:p-8 overflow-hidden">
+            <div className="mb-6 shrink-0">
                 <h1 className="text-3xl font-black tracking-tight mb-1 flex items-center gap-3">
                     <Sparkles className="w-7 h-7 text-primary" />
                     AI Career Advisor
