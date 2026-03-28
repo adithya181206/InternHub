@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Mail, Briefcase, FileText, CheckCircle2, Loader2, RefreshCw, XCircle, ShieldCheck, Building2 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGemini } from '../lib/gemini';
 
 type ChangeCompanyStep = 'idle' | 'uploading' | 'verifying' | 'success' | 'failed';
 
@@ -42,80 +42,12 @@ export default function VerificationDesk() {
         setAiResult(null);
 
         try {
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-            if (!apiKey) {
-                // Fallback mock for demo
-                await new Promise(r => setTimeout(r, 2000));
-                const mockCompanies = ['Google', 'Vercel', 'OpenAI', 'Stripe'];
-                const detected = mockCompanies.find(c => c.toLowerCase() !== user?.verifiedCompany?.toLowerCase()) || 'Vercel';
-                setAiResult({ isValid: true, detectedCompany: detected, employeeName: user?.displayName || 'Mock User', reason: 'Mock: Document appears to be a valid relieving letter.' });
-                setChangeStep('success');
-                return;
-            }
-
             const isPdf = changeDoc.type === 'application/pdf' || changeDoc.name.toLowerCase().endsWith('.pdf');
             const isImage = changeDoc.type.startsWith('image/');
 
-            if (!isPdf && !isImage) {
-                const text = await changeDoc.text();
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-                const prompt = `You are a document verifier for a professional networking platform. A user is trying to switch their verified company by submitting proof of employment transition.
-
-Analyze the following document text and determine:
-1. Is this a valid relieving letter, experience letter, or official company email confirming the user has left or joined a company?
-2. What company is the user transitioning to (the NEW company they now work for or have joined)?
-3. What is the full name of the employee mentioned in the document?
-
-Respond ONLY in this exact JSON format:
-{
-  "isValid": true or false,
-  "detectedCompany": "Company Name or null",
-  "employeeName": "Employee Name or null",
-  "reason": "brief explanation"
-}
-
-Document text:
-${text}`;
-                const result = await model.generateContent(prompt);
-
-                let responseText = result.response.text();
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) responseText = jsonMatch[0];
-                responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-                let parsed = JSON.parse(responseText);
-
-                // Check name match
-                if (parsed.isValid && parsed.employeeName && user?.displayName) {
-                    const docName = parsed.employeeName.toLowerCase();
-                    const userName = user.displayName.toLowerCase();
-                    // Basic loose match: checking if any part of the user's display name is in the doc name, or vice versa
-                    if (!docName.includes(userName) && !userName.includes(docName)) {
-                        parsed.isValid = false;
-                        parsed.reason = `Name mismatch: The document is for "${parsed.employeeName}", but your account name is "${user.displayName}".`;
-                    }
-                }
-
-                setAiResult(parsed);
-                setChangeStep(parsed.isValid ? 'success' : 'failed');
-                return;
-            }
-
-            // For PDF or image - send inline
-            const base64Data = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(changeDoc);
-            });
-
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
             const prompt = `You are a document verifier for a professional networking platform. A user is trying to switch their verified company by submitting proof of employment transition.
 
-Analyze the attached document and determine:
+Analyze the document and determine:
 1. Is this a valid relieving letter, experience letter, or official company email confirming the user has left or joined a company?
 2. What company is the user transitioning to (the NEW company they now work for or have joined)?
 3. What is the full name of the employee mentioned in the document?
@@ -128,17 +60,22 @@ Respond ONLY in this exact JSON format:
   "reason": "brief explanation"
 }`;
 
-            const result = await model.generateContent([
-                prompt,
-                {
-                    inlineData: {
-                        data: base64Data,
-                        mimeType: isPdf ? 'application/pdf' : changeDoc.type,
-                    }
-                }
-            ]);
+            const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
 
-            let responseText = result.response.text();
+            if (!isPdf && !isImage) {
+                const text = await changeDoc.text();
+                contents[0].parts[0].text += `\n\nDocument text:\n${text}`;
+            } else {
+                const base64Data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(changeDoc);
+                });
+                contents[0].parts.push({ inlineData: { data: base64Data, mimeType: isPdf ? 'application/pdf' : changeDoc.type } });
+            }
+
+            let responseText = await callGemini(contents);
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) responseText = jsonMatch[0];
             responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();

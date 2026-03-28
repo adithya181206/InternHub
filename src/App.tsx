@@ -40,7 +40,7 @@ function App() {
   }
 
   return (
-    <Router basename="/InternHub">
+    <Router>
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300 flex">
         <Routes>
           <Route path="/" element={!user ? <LandingPage toggleTheme={toggleTheme} theme={theme} /> : <Navigate to="/dashboard" />} />

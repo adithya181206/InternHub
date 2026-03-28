@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UploadCloud, FileJson, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGemini } from '../lib/gemini';
 
 interface DNA {
     extractedName: string | null;
@@ -57,27 +57,6 @@ export default function DNAHub() {
                 });
             }
 
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (!apiKey) {
-                // Fallback mock parsing
-                await new Promise(r => setTimeout(r, 1500));
-                const mockDna: DNA = {
-                    extractedName: user?.displayName || 'Mock User',
-                    education: [{ degree: 'B.Tech', institution: 'Mock University', year: '2024' }],
-                    experience: [{ role: 'SDE Intern', company: 'Mock Corp', period: 'Summer 2023', details: 'Built mock APIs' }],
-                    projects: [{ title: 'Chat App', tech: 'React, Firebase', details: 'A real-time chat application.' }],
-                    technicalSkills: ['React', 'TypeScript', 'Node.js'],
-                    summary: 'A highly motivated individual looking for mock intern opportunities.'
-                };
-                setDna(mockDna);
-                if (user?.uid) localStorage.setItem(`mock_dna_${user.uid}`, JSON.stringify(mockDna));
-                updateUser({ displayName: mockDna.extractedName, dailyApiCount: (user?.dailyApiCount || 0) + 1, hasResume: true });
-                setLoading(false);
-                return;
-            }
-
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `You are an automated resume parser. Read the resume and extract exactly 5 sections. 
 CRITICAL: You must respond ONLY with raw JSON. NO markdown. NO conversational text. Do not wrap in \`\`\`json. Just the absolute raw JSON object.
 
@@ -91,18 +70,12 @@ Keys required in the JSON:
 
 ${!isPdf ? `Resume Text:\n${text}` : 'The resume is attached as a PDF document.'}`;
 
-            const promptParts: any[] = [prompt];
+            const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
             if (isPdf) {
-                promptParts.push({
-                    inlineData: {
-                        data: base64Data,
-                        mimeType: 'application/pdf'
-                    }
-                });
+                contents[0].parts.push({ inlineData: { data: base64Data, mimeType: 'application/pdf' } });
             }
 
-            const result = await model.generateContent(promptParts);
-            let responseText = result.response.text();
+            let responseText = await callGemini(contents);
 
             // Defensive cleaning
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);

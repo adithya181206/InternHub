@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, Bot, User, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callGemini } from '../lib/gemini';
 
 interface Message {
     id: string;
@@ -49,17 +49,9 @@ export default function CareerAdvisor() {
         setLoading(true);
 
         try {
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             let aiText: string;
 
-            if (!apiKey) {
-                await new Promise(r => setTimeout(r, 1500));
-                aiText = getMockResponse(trimmed);
-            } else {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-                const systemPrompt = `You are an AI Career Advisor for a professional career platform called InternHub. You help students find the right career path, suggest skills to learn, recommend internship strategies, and provide interview tips.
+            const systemPrompt = `You are an AI Career Advisor for a professional career platform called InternHub. You help students find the right career path, suggest skills to learn, recommend internship strategies, and provide interview tips.
 
 ${dna ? `Here is the student's Career DNA profile:
 - Name: ${dna.extractedName || 'Unknown'}
@@ -70,15 +62,13 @@ ${dna ? `Here is the student's Career DNA profile:
 
 Keep responses concise (3-5 sentences max), practical, and encouraging. Use bullet points when listing suggestions. Be specific based on their profile.`;
 
-                const conversationHistory = messages
-                    .filter(m => m.id !== 'greeting')
-                    .map(m => `${m.role === 'user' ? 'Student' : 'Advisor'}: ${m.text}`)
-                    .join('\n');
+            const conversationHistory = messages
+                .filter(m => m.id !== 'greeting')
+                .map(m => `${m.role === 'user' ? 'Student' : 'Advisor'}: ${m.text}`)
+                .join('\n');
 
-                const fullPrompt = `${systemPrompt}\n\nConversation so far:\n${conversationHistory}\n\nStudent: ${trimmed}\n\nAdvisor:`;
-                const result = await model.generateContent(fullPrompt);
-                aiText = result.response.text();
-            }
+            const fullPrompt = `${systemPrompt}\n\nConversation so far:\n${conversationHistory}\n\nStudent: ${trimmed}\n\nAdvisor:`;
+            aiText = await callGemini([{ role: 'user', parts: [{ text: fullPrompt }] }]);
 
             const aiMsg: Message = { id: `ai_${Date.now()}`, role: 'ai', text: aiText };
             setMessages(prev => [...prev, aiMsg]);
