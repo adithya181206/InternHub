@@ -177,15 +177,3 @@ Keep responses concise (3-5 sentences max), practical, and encouraging. Use bull
     );
 }
 
-function getMockResponse(question: string): string {
-    const q = question.toLowerCase();
-    if (q.includes('role') || q.includes('fit') || q.includes('match'))
-        return "Based on your profile, I'd recommend:\n• **Full-Stack Developer** — your React and Node.js skills are a great match\n• **ML Engineer** — if you want to leverage your Python experience\n• **DevOps Engineer** — combining your backend knowledge with cloud skills";
-    if (q.includes('skill') || q.includes('learn'))
-        return "To boost your profile, consider:\n• **System Design** — critical for senior roles\n• **Cloud Computing (AWS/GCP)** — highly in demand\n• **Data Structures & Algorithms** — essential for interviews\n• **Docker & Kubernetes** — for DevOps readiness";
-    if (q.includes('interview'))
-        return "Here are my top interview tips:\n• Practice coding problems on LeetCode (2 per day)\n• Prepare STAR stories for behavioral questions\n• Research the company's tech stack beforehand\n• Ask insightful questions about team culture";
-    if (q.includes('resume'))
-        return "Resume tips:\n• Lead with impact metrics (\"Improved by X%\")\n• Tailor your resume to each role\n• Keep it to 1 page for internships\n• Use action verbs: Built, Designed, Optimized";
-    return "That's a great question! Focus on building a strong portfolio, networking with professionals on InternHub, and continuously learning. Would you like specific advice on roles, skills, or interviews?";
-}
