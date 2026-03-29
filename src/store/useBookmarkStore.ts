@@ -13,6 +13,7 @@ interface BookmarkState {
     bookmarks: string[]; // array of job IDs
     toggleBookmark: (jobId: string) => void;
     isBookmarked: (jobId: string) => boolean;
+    reload: () => void;
 }
 
 export const useBookmarkStore = create<BookmarkState>((set, get) => ({
@@ -28,4 +29,7 @@ export const useBookmarkStore = create<BookmarkState>((set, get) => ({
         });
     },
     isBookmarked: (jobId) => get().bookmarks.includes(jobId),
+    reload: () => {
+        set({ bookmarks: loadBookmarks() });
+    },
 }));

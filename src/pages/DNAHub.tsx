@@ -21,12 +21,28 @@ export default function DNAHub() {
 
     // Restore DNA from localStorage on mount if user already uploaded
     useEffect(() => {
-        if (user?.uid && user.hasResume) {
+        if (!user?.uid) return;
+
+        const loadDna = () => {
             const stored = localStorage.getItem(`mock_dna_${user.uid}`);
             if (stored) {
                 setDna(JSON.parse(stored));
+            } else {
+                setDna(null);
             }
+        };
+
+        if (user.hasResume) {
+            loadDna();
         }
+
+        // Listen for realtime sync updates from Firebase
+        const eventName = `mock_dna_${user.uid}`;
+        window.addEventListener(eventName, loadDna);
+        
+        return () => {
+            window.removeEventListener(eventName, loadDna);
+        };
     }, [user?.uid, user?.hasResume]);
 
     const handleUpload = async () => {

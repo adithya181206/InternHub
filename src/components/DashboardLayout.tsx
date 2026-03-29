@@ -7,11 +7,14 @@ import { useChatStore } from '../store/useChatStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { cn } from '../lib/utils';
+import { useFirebaseStorageSync } from '../lib/syncStorage';
 
 export default function DashboardLayout({ theme, toggleTheme }: { theme: 'light' | 'dark', toggleTheme: () => void }) {
 
     // Global Chat Notifications
     const { user, logout } = useAuthStore();
+    useFirebaseStorageSync();
+    
     const { messages, reload } = useChatStore();
     const { addToast } = useNotificationStore();
     const prevMsgCount = useRef(messages.length);

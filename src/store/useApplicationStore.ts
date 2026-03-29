@@ -28,6 +28,7 @@ interface ApplicationState {
     moveApplication: (id: string, stage: ApplicationStage) => void;
     updateNotes: (id: string, notes: string) => void;
     removeApplication: (id: string) => void;
+    reload: () => void;
 }
 
 export const useApplicationStore = create<ApplicationState>((set) => ({
@@ -74,5 +75,9 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
             saveApplications(updated);
             return { applications: updated };
         });
+    },
+
+    reload: () => {
+        set({ applications: loadApplications() });
     },
 }));

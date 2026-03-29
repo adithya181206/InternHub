@@ -6,6 +6,8 @@ import { useReferralStore } from '../store/useReferralStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useChatStore } from '../store/useChatStore';
 import ChatPanel from '../components/ChatPanel';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface StudentDNA {
     extractedName: string | null;
@@ -24,6 +26,8 @@ export default function ReferralDesk() {
     const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
     const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
     const [chatOpen, setChatOpen] = useState<{ referralId: string; partnerName: string } | null>(null);
+    const [dnaCache, setDnaCache] = useState<Record<string, StudentDNA | null>>({});
+    const [resumeCache, setResumeCache] = useState<Record<string, string | null>>({});
 
     useEffect(() => { reload(); }, [reload]);
     useEffect(() => {
@@ -37,11 +41,22 @@ export default function ReferralDesk() {
 
     const pendingCount = companyReferrals.filter(r => r.status === 'pending').length;
 
-    const handleViewProfile = (reqId: string) => {
-        if (activeProfileId === reqId) setActiveProfileId(null);
-        else {
+    const handleViewProfile = async (reqId: string, studentId: string) => {
+        if (activeProfileId === reqId) {
+            setActiveProfileId(null);
+        } else {
             setActiveProfileId(reqId);
             setActiveEmailId(null);
+            
+            if (dnaCache[studentId] === undefined) {
+                try {
+                    const dnaDoc = await getDoc(doc(db, 'user_data', `mock_dna_${studentId}`));
+                    setDnaCache(prev => ({ ...prev, [studentId]: dnaDoc.exists() && dnaDoc.data().value ? JSON.parse(dnaDoc.data().value) : null }));
+                    
+                    const resumeDoc = await getDoc(doc(db, 'user_data', `mock_resume_file_${studentId}`));
+                    setResumeCache(prev => ({ ...prev, [studentId]: resumeDoc.exists() ? resumeDoc.data().value : null }));
+                } catch(e) { console.error(e); }
+            }
         }
     };
 
@@ -81,13 +96,11 @@ ${user.verifiedCompany} Alumni`;
     };
 
     const getStudentDNA = (studentId: string): StudentDNA | null => {
-        const stored = localStorage.getItem(`mock_dna_${studentId}`);
-        return stored ? JSON.parse(stored) : null;
+        return dnaCache[studentId] || null;
     };
 
-    // Check if resume file exists for a student
     const getResumeFile = (studentId: string): string | null => {
-        return localStorage.getItem(`mock_resume_file_${studentId}`);
+        return resumeCache[studentId] || null;
     };
 
     return (
@@ -133,7 +146,7 @@ ${user.verifiedCompany} Alumni`;
 
                             <div className="flex items-center gap-4 mb-4 flex-wrap">
                                 <button
-                                    onClick={() => handleViewProfile(req.id)}
+                                    onClick={() => handleViewProfile(req.id, req.studentId)}
                                     className={cn(
                                         "flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer",
                                         activeProfileId === req.id ? "text-primary bg-primary/10 px-3 py-1.5 rounded-xl shadow-inner" : "text-primary hover:underline"

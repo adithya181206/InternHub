@@ -18,8 +18,20 @@ export default function CareerAdvisor() {
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Load student DNA for context
-    const dnaRaw = localStorage.getItem(`mock_dna_${user?.uid}`);
-    const dna = dnaRaw ? JSON.parse(dnaRaw) : null;
+    const [dna, setDna] = useState<any>(() => {
+        const dnaRaw = localStorage.getItem(`mock_dna_${user?.uid}`);
+        return dnaRaw ? JSON.parse(dnaRaw) : null;
+    });
+
+    useEffect(() => {
+        const eventName = `mock_dna_${user?.uid}`;
+        const loadDna = () => {
+            const raw = localStorage.getItem(eventName);
+            if (raw) setDna(JSON.parse(raw));
+        };
+        window.addEventListener(eventName, loadDna);
+        return () => window.removeEventListener(eventName, loadDna);
+    }, [user?.uid]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
