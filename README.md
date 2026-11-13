@@ -2,7 +2,7 @@
 
 > An AI-powered internship matching and senior alumni referral platform engineered to bridge the gap between student resumes and high-impact company opportunities through automated skill-gap analysis and direct alumnus routing.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?style=for-the-badge&logo=githubpages&logoColor=white)](https://adithya181206.github.io/InternHub)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://intern-hub-wheat.vercel.app/)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.2-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-v12.10-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
@@ -13,8 +13,11 @@
 
 ## Visual Preview
 
-![InternHub Preview](./assets/preview.png)
-> *Placeholder: Drop in a screenshot or animated GIF of the Discovery Hub and Career DNA dashboard in `./assets/preview.png`.*
+<a href="https://intern-hub-wheat.vercel.app/">
+  <img src="https://img.shields.io/badge/🚀_Try_InternHub_Live-intern--hub--wheat.vercel.app-4F46E5?style=for-the-badge&logoColor=white" alt="Try InternHub Live" />
+</a>
+
+> **[▶ Launch InternHub Live Demo](https://intern-hub-wheat.vercel.app/)** — explore the Discovery Hub, upload a resume for Career DNA parsing, and test the full referral workflow directly in your browser.
 
 ---
 
